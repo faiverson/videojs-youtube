@@ -1,7 +1,7 @@
 /* global videojs, YT */
 /* jshint browser: true */
 
-(function() {
+(function(window, document, undefined){
   /**
    * @fileoverview YouTube Media Controller - Wrapper for YouTube Media API
    */
@@ -298,6 +298,15 @@
           var firstScriptTag = document.getElementsByTagName('script')[0];
           firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
           videojs.Youtube.apiLoading = true;
+          // Called when YouTube API is ready to be used
+          window.onYouTubeIframeAPIReady = function() {
+            var yt;
+            while((yt = videojs.Youtube.loadingQueue.shift())) {
+              yt.loadYoutube();
+            }
+            videojs.Youtube.loadingQueue = [];
+            videojs.Youtube.apiReady = true;
+          };
         }
       }
     }
@@ -437,7 +446,7 @@
         this.player_.trigger('waiting');
       }
 
-      if(this.isReady_) {
+      if(this.isReady_ && videojs.Youtube.apiReady) {
         // Sync the player volume with YouTube
         this.ytplayer.setVolume(this.player_.volume() * 100);
 
@@ -461,14 +470,17 @@
       this.ytplayer.pauseVideo();
     }
   };
+
   videojs.Youtube.prototype.paused = function() {
     return (this.ytplayer) ?
       (this.lastState !== YT.PlayerState.PLAYING && this.lastState !== YT.PlayerState.BUFFERING)
       : true;
   };
+
   videojs.Youtube.prototype.currentTime = function() {
     return (this.ytplayer && this.ytplayer.getCurrentTime) ? this.ytplayer.getCurrentTime() : 0;
   };
+
   videojs.Youtube.prototype.setCurrentTime = function(seconds) {
     if (this.lastState === YT.PlayerState.PAUSED) {
       this.timeBeforeSeek = this.currentTime();
@@ -544,6 +556,7 @@
   videojs.Youtube.prototype.muted = function() {
     return this.mutedVal;
   };
+
   videojs.Youtube.prototype.setMuted = function(muted) {
     if(muted) {
       this.storedVolume = this.volumeVal;
@@ -604,7 +617,6 @@
   };
 
   ////////////////////////////// YouTube specific functions //////////////////////////////
-
   // All videos created before YouTube API is loaded
   videojs.Youtube.loadingQueue = [];
 
@@ -648,7 +660,6 @@
     150: 'The owner of the requested video does not allow it to be played in embedded players.'
   };
 
-
   // Transform a JavaScript object into URL params
   videojs.Youtube.makeQueryString = function(args) {
     var array = ['modestbranding=1'];
@@ -659,16 +670,6 @@
     }
 
     return array.join('&');
-  };
-
-  // Called when YouTube API is ready to be used
-  window.onYouTubeIframeAPIReady = function() {
-    var yt;
-    while((yt = videojs.Youtube.loadingQueue.shift())) {
-      yt.loadYoutube();
-    }
-    videojs.Youtube.loadingQueue = [];
-    videojs.Youtube.apiReady = true;
   };
 
   videojs.Youtube.prototype.onReady = function() {
@@ -1113,4 +1114,4 @@
       return -1;
     };
   }
-})();
+})(window, document);
